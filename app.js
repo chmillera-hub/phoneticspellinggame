@@ -124,6 +124,37 @@ const PILES = [
 const PILE_BY_ID = {};
 PILES.forEach((pile) => (PILE_BY_ID[pile.id] = pile));
 
+// Short source codes (c1-c5, v1-v3) matching the "Consonants 1" / "Vowels 1"
+// numbering, so a readout can show which family each sound came from —
+// e.g. comparing "boat" (b(c1) -oh(v3) -t(c4)) to "vote" (v(c2) -oh(v3) -t(c4))
+// makes it obvious the swap moved from Consonants 1 to Consonants 2.
+const PILE_CODE = {};
+(() => {
+  let consonantCount = 0;
+  let vowelCount = 0;
+  PILES.forEach((pile) => {
+    if (pile.type === "consonant") {
+      consonantCount += 1;
+      PILE_CODE[pile.id] = `c${consonantCount}`;
+    } else {
+      vowelCount += 1;
+      PILE_CODE[pile.id] = `v${vowelCount}`;
+    }
+  });
+})();
+
+// Formats a row of cards as "b(c1) -oh(v3) -t(c4)" — no leading dash on the
+// first sound, every sound after it prefixed with "-" and tagged with its
+// source pile code. Empty build slots render as a bare "_".
+function formatReadout(cards) {
+  return cards
+    .map((c, i) => {
+      const token = c ? `${c.symbol}(${PILE_CODE[c.pileId]})` : "_";
+      return i === 0 ? token : `-${token}`;
+    })
+    .join(" ");
+}
+
 // Look up which pile a symbol belongs to, so presets can be defined by
 // symbol alone (e.g. "b") instead of repeating the pile id every time.
 const SYMBOL_INDEX = {};
@@ -459,7 +490,7 @@ function renderRow(rowKey) {
   state[rowKey].forEach((_, index) => container.appendChild(makeSlotCardEl(rowKey, index)));
 
   document.getElementById(`readout-${rowKey}`).textContent = state[rowKey].length
-    ? state[rowKey].map((c) => c.symbol).join(" - ")
+    ? formatReadout(state[rowKey])
     : "(no sounds yet)";
 }
 
@@ -620,7 +651,7 @@ function renderBuildRow() {
   });
 
   document.getElementById("readout-build").textContent = state.build.length
-    ? state.build.map((c) => (c ? c.symbol : "_")).join(" - ")
+    ? formatReadout(state.build)
     : "(no slots)";
 
   const lockBtn = document.getElementById("lock-in");
@@ -722,7 +753,7 @@ function lockInWord() {
   renderRow("original");
 
   showLockMessage(
-    `Locked in "${wordName}" (${state.build.map((c) => c.symbol).join(" - ")}) — now rift on it in the Rhyme Sandbox below.`
+    `Locked in "${wordName}" (${formatReadout(state.build)}) — now rift on it in the Rhyme Sandbox below.`
   );
 
   document.getElementById("original-block").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -757,7 +788,7 @@ function saveLog(entries) {
 }
 
 function readoutFor(row) {
-  return state[row].map((c) => c.symbol).join(" - ");
+  return formatReadout(state[row]);
 }
 
 function renderLog() {
