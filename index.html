@@ -11,9 +11,10 @@
 <header>
   <h1>Phonetic Rhyming Sandbox</h1>
   <p class="instructions">
-    Build a word out of sound cards, then copy it down into the sandbox row and swap cards
-    in and out to discover new, phonetically-similar words. Drag a card from a pile on the
-    right into a slot &mdash; or tap a slot to select it, then tap a pile card to fill it.
+    Each slot below is a full sound-family card, just like the reference charts &mdash;
+    scan it top to bottom to see every alternative sound at that position. Click a row
+    to pick that sound, or use &lsaquo; &rsaquo; to flip the slot to a different family
+    entirely. Build a word, copy it down, then swap sounds in the sandbox row to find rhymes.
   </p>
 </header>
 
@@ -35,7 +36,7 @@
         <div class="row-controls">
           <button type="button" class="add-slot" data-row="original">+ sound</button>
           <button type="button" class="remove-slot" data-row="original">&minus; sound</button>
-          <button type="button" class="clear-row" data-row="original">Clear row</button>
+          <button type="button" class="clear-row" data-row="original">Reset row</button>
         </div>
         <div class="phonetic-readout" id="readout-original"></div>
       </div>
@@ -57,7 +58,7 @@
         <div class="row-controls">
           <button type="button" class="add-slot" data-row="sandbox">+ sound</button>
           <button type="button" class="remove-slot" data-row="sandbox">&minus; sound</button>
-          <button type="button" class="clear-row" data-row="sandbox">Clear row</button>
+          <button type="button" class="clear-row" data-row="sandbox">Reset row</button>
         </div>
         <div class="phonetic-readout" id="readout-sandbox"></div>
       </div>
@@ -78,10 +79,9 @@
   </section>
 </main>
 
-<aside id="piles">
-  <h2>Sound Piles</h2>
-  <div id="trash" class="trash-zone">&#128465; Drop a sandbox card here to remove it</div>
-  <div id="pile-list"></div>
+<aside id="reference">
+  <h2>Sound Families</h2>
+  <ol class="pile-index" id="pile-index"></ol>
 
   <div class="legend">
     <h3>Legend</h3>

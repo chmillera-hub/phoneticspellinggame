@@ -121,142 +121,120 @@ const PILES = [
   },
 ];
 
-// Quick lookup of a card's styling class by symbol (symbols are unique).
-const CARD_CLASS = {};
-PILES.forEach((pile) => pile.cards.forEach((c) => (CARD_CLASS[c.symbol] = pile.cls)));
+const PILE_BY_ID = {};
+PILES.forEach((pile) => (PILE_BY_ID[pile.id] = pile));
+
+// Look up which pile a symbol belongs to, so presets can be defined by
+// symbol alone (e.g. "b") instead of repeating the pile id every time.
+const SYMBOL_INDEX = {};
+PILES.forEach((pile) => pile.cards.forEach((c) => (SYMBOL_INDEX[c.symbol] = { pileId: pile.id, ...c })));
+
+function slotFromSymbol(symbol) {
+  const found = SYMBOL_INDEX[symbol];
+  if (!found) throw new Error(`Unknown sound symbol: ${symbol}`);
+  return { pileId: found.pileId, symbol: found.symbol, example: found.example };
+}
+
+function defaultSlot() {
+  const pile = PILES[0];
+  return { pileId: pile.id, symbol: pile.cards[0].symbol, example: pile.cards[0].example };
+}
 
 const PRESETS = [
-  { word: "boat", sounds: [["b", "bore"], ["oh", "poor"], ["t", "tin"]] },
-  { word: "cake", sounds: [["k", "cost"], ["ay", "play"], ["k", "cost"]] },
-  { word: "time", sounds: [["t", "tin"], ["eye", "pyre"], ["m", "may"]] },
-  { word: "sheep", sounds: [["sh", "shire"], ["ee", "peace"], ["p", "pen"]] },
+  { word: "boat", symbols: ["b", "oh", "t"] },
+  { word: "cake", symbols: ["k", "ay", "k"] },
+  { word: "time", symbols: ["t", "eye", "m"] },
+  { word: "sheep", symbols: ["sh", "ee", "p"] },
 ];
 
 /* ---------------------------------------------------------------------
- * State
+ * State — every slot always holds a full { pileId, symbol, example }.
  * ------------------------------------------------------------------- */
 const state = {
-  original: PRESETS[0].sounds.map(([symbol, example]) => ({ symbol, example })),
-  sandbox: PRESETS[0].sounds.map(([symbol, example]) => ({ symbol, example })),
-  selected: null, // { row, index } of the currently selected slot
+  original: PRESETS[0].symbols.map(slotFromSymbol),
+  sandbox: PRESETS[0].symbols.map(slotFromSymbol),
 };
 
 const MIN_SLOTS = 1;
-const MAX_SLOTS = 8;
+const MAX_SLOTS = 6;
 
 /* ---------------------------------------------------------------------
  * Rendering
  * ------------------------------------------------------------------- */
-function cardClass(symbol) {
-  return CARD_CLASS[symbol] || "";
-}
+function makeSlotCardEl(rowKey, index) {
+  const slotState = state[rowKey][index];
+  const pile = PILE_BY_ID[slotState.pileId];
 
-function makeCardEl(cardData, { removable, draggableSource }) {
-  const el = document.createElement("div");
-  el.className = `card ${cardClass(cardData.symbol)}`;
-  el.draggable = true;
+  const card = document.createElement("div");
+  card.className = "slot-card";
 
-  const symbolEl = document.createElement("div");
-  symbolEl.className = "symbol";
-  symbolEl.textContent = cardData.symbol;
-  el.appendChild(symbolEl);
+  const head = document.createElement("div");
+  head.className = "slot-card-head";
 
-  const exampleEl = document.createElement("div");
-  exampleEl.className = "example";
-  exampleEl.textContent = cardData.example;
-  el.appendChild(exampleEl);
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.textContent = "‹"; // ‹
+  prevBtn.title = "Previous sound family";
+  prevBtn.addEventListener("click", () => cyclePile(rowKey, index, -1));
+  head.appendChild(prevBtn);
 
-  el.title = `${cardData.symbol} — as in "${cardData.example}"`;
+  const label = document.createElement("span");
+  label.className = "pile-label";
+  label.textContent = `${pile.label} — ${pile.category}`;
+  head.appendChild(label);
 
-  el.addEventListener("dragstart", (e) => {
-    e.dataTransfer.effectAllowed = "copyMove";
-    e.dataTransfer.setData("text/plain", JSON.stringify({ ...draggableSource, symbol: cardData.symbol, example: cardData.example }));
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.textContent = "›"; // ›
+  nextBtn.title = "Next sound family";
+  nextBtn.addEventListener("click", () => cyclePile(rowKey, index, 1));
+  head.appendChild(nextBtn);
+
+  card.appendChild(head);
+
+  const rows = document.createElement("div");
+  rows.className = "slot-card-rows";
+  pile.cards.forEach((c) => {
+    const rowEl = document.createElement("div");
+    const isActive = c.symbol === slotState.symbol;
+    rowEl.className = `sound-row ${pile.cls}` + (isActive ? " active" : "");
+    rowEl.addEventListener("click", () => selectSound(rowKey, index, c.symbol));
+
+    const symbolEl = document.createElement("span");
+    symbolEl.className = "symbol";
+    symbolEl.textContent = c.symbol;
+    rowEl.appendChild(symbolEl);
+
+    const exampleEl = document.createElement("span");
+    exampleEl.className = "example";
+    exampleEl.textContent = c.example;
+    rowEl.appendChild(exampleEl);
+
+    rowEl.title = `${c.symbol} — as in "${c.example}"`;
+    rows.appendChild(rowEl);
   });
+  card.appendChild(rows);
 
-  if (removable) {
-    const btn = document.createElement("button");
-    btn.className = "remove-btn";
-    btn.type = "button";
-    btn.textContent = "✕";
-    btn.title = "Remove";
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const { row, index } = draggableSource;
-      state[row][index] = null;
-      clearSelection();
-      renderAll();
-    });
-    el.appendChild(btn);
-  }
-
-  return el;
+  return card;
 }
 
 function renderRow(rowKey) {
   const container = document.getElementById(`row-${rowKey}`);
   container.innerHTML = "";
-  const arr = state[rowKey];
+  state[rowKey].forEach((_, index) => container.appendChild(makeSlotCardEl(rowKey, index)));
 
-  arr.forEach((cardData, index) => {
-    const slot = document.createElement("div");
-    slot.className = "slot" + (cardData ? " filled" : "");
-    slot.dataset.row = rowKey;
-    slot.dataset.index = String(index);
-
-    if (state.selected && state.selected.row === rowKey && state.selected.index === index) {
-      slot.classList.add("selected");
-    }
-
-    if (cardData) {
-      slot.appendChild(makeCardEl(cardData, { removable: true, draggableSource: { source: "slot", row: rowKey, index } }));
-    } else {
-      slot.textContent = "+";
-    }
-
-    slot.addEventListener("click", () => handleSlotClick(rowKey, index));
-
-    slot.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      slot.classList.add("drag-over");
-    });
-    slot.addEventListener("dragleave", () => slot.classList.remove("drag-over"));
-    slot.addEventListener("drop", (e) => {
-      e.preventDefault();
-      slot.classList.remove("drag-over");
-      handleDrop(e, rowKey, index);
-    });
-
-    container.appendChild(slot);
-  });
-
-  document.getElementById(`readout-${rowKey}`).textContent = arr.length
-    ? arr.map((c) => (c ? c.symbol : "_")).join(" - ")
+  document.getElementById(`readout-${rowKey}`).textContent = state[rowKey].length
+    ? state[rowKey].map((c) => c.symbol).join(" - ")
     : "(no sounds yet)";
 }
 
-function renderPiles() {
-  const list = document.getElementById("pile-list");
-  if (list.childElementCount) return; // piles are static, build once
+function renderPileIndex() {
+  const list = document.getElementById("pile-index");
+  if (list.childElementCount) return;
   PILES.forEach((pile) => {
-    const details = document.createElement("details");
-    details.className = "pile";
-    details.open = true;
-
-    const summary = document.createElement("summary");
-    summary.textContent = `${pile.label} — ${pile.category}`;
-    details.appendChild(summary);
-
-    const cardsWrap = document.createElement("div");
-    cardsWrap.className = "pile-cards";
-    pile.cards.forEach((cardData) => {
-      const cardEl = makeCardEl(cardData, { removable: false, draggableSource: { source: "pile" } });
-      cardEl.classList.add("pile-card");
-      cardEl.addEventListener("click", () => handlePileCardClick(cardData));
-      cardsWrap.appendChild(cardEl);
-    });
-    details.appendChild(cardsWrap);
-
-    list.appendChild(details);
+    const li = document.createElement("li");
+    li.textContent = `${pile.label} — ${pile.category} (${pile.cards.length})`;
+    list.appendChild(li);
   });
 }
 
@@ -266,7 +244,7 @@ function renderPresets() {
   PRESETS.forEach((preset, i) => {
     const opt = document.createElement("option");
     opt.value = String(i);
-    opt.textContent = `${preset.word} (${preset.sounds.map((s) => s[0]).join("-")})`;
+    opt.textContent = `${preset.word} (${preset.symbols.join("-")})`;
     select.appendChild(opt);
   });
 }
@@ -277,116 +255,43 @@ function renderAll() {
 }
 
 /* ---------------------------------------------------------------------
- * Interaction: click-to-select / click-to-place (works without drag)
+ * Interaction
  * ------------------------------------------------------------------- */
-function clearSelection() {
-  state.selected = null;
+function selectSound(row, index, symbol) {
+  state[row][index] = slotFromSymbol(symbol);
+  renderRow(row);
 }
 
-function handleSlotClick(row, index) {
-  const sel = state.selected;
-
-  if (sel && (sel.row !== row || sel.index !== index)) {
-    // Swap the selected slot's contents with the clicked slot.
-    const tmp = state[row][index];
-    state[row][index] = state[sel.row][sel.index];
-    state[sel.row][sel.index] = tmp;
-    clearSelection();
-    renderAll();
-    return;
-  }
-
-  // Toggle selection on the same slot.
-  state.selected = sel && sel.row === row && sel.index === index ? null : { row, index };
-  renderAll();
+function cyclePile(row, index, direction) {
+  const currentPileId = state[row][index].pileId;
+  const currentPos = PILES.findIndex((p) => p.id === currentPileId);
+  const nextPos = (currentPos + direction + PILES.length) % PILES.length;
+  const nextPile = PILES[nextPos];
+  state[row][index] = { pileId: nextPile.id, symbol: nextPile.cards[0].symbol, example: nextPile.cards[0].example };
+  renderRow(row);
 }
 
-function handlePileCardClick(cardData) {
-  const sel = state.selected;
-  if (!sel) return; // nothing selected: dragging is the way to place this card
-  state[sel.row][sel.index] = { symbol: cardData.symbol, example: cardData.example };
-  clearSelection();
-  renderAll();
-}
-
-/* ---------------------------------------------------------------------
- * Interaction: HTML5 drag & drop
- * ------------------------------------------------------------------- */
-function handleDrop(e, targetRow, targetIndex) {
-  let payload;
-  try {
-    payload = JSON.parse(e.dataTransfer.getData("text/plain"));
-  } catch (err) {
-    return;
-  }
-  if (!payload) return;
-
-  if (payload.source === "pile") {
-    state[targetRow][targetIndex] = { symbol: payload.symbol, example: payload.example };
-  } else if (payload.source === "slot") {
-    const { row: srcRow, index: srcIndex } = payload;
-    if (srcRow === targetRow && srcIndex === targetIndex) return;
-    const tmp = state[targetRow][targetIndex];
-    state[targetRow][targetIndex] = state[srcRow][srcIndex];
-    state[srcRow][srcIndex] = tmp;
-  }
-  clearSelection();
-  renderAll();
-}
-
-function setupTrash() {
-  const trash = document.getElementById("trash");
-  trash.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    trash.classList.add("drag-over");
-  });
-  trash.addEventListener("dragleave", () => trash.classList.remove("drag-over"));
-  trash.addEventListener("drop", (e) => {
-    e.preventDefault();
-    trash.classList.remove("drag-over");
-    let payload;
-    try {
-      payload = JSON.parse(e.dataTransfer.getData("text/plain"));
-    } catch (err) {
-      return;
-    }
-    if (payload && payload.source === "slot") {
-      state[payload.row][payload.index] = null;
-      clearSelection();
-      renderAll();
-    }
-  });
-}
-
-/* ---------------------------------------------------------------------
- * Row-level controls
- * ------------------------------------------------------------------- */
 function addSlot(row) {
   if (state[row].length >= MAX_SLOTS) return;
-  state[row].push(null);
-  renderAll();
+  state[row].push(defaultSlot());
+  renderRow(row);
 }
 
 function removeSlot(row) {
   if (state[row].length <= MIN_SLOTS) return;
   state[row].pop();
-  if (state.selected && state.selected.row === row && state.selected.index >= state[row].length) {
-    clearSelection();
-  }
-  renderAll();
+  renderRow(row);
 }
 
 function clearRow(row) {
-  state[row] = state[row].map(() => null);
-  clearSelection();
-  renderAll();
+  state[row] = state[row].map(defaultSlot);
+  renderRow(row);
 }
 
 function copyDown() {
-  state.sandbox = state.original.map((c) => (c ? { ...c } : null));
+  state.sandbox = state.original.map((c) => ({ ...c }));
   document.getElementById("sandbox-word-name").value = "";
-  clearSelection();
-  renderAll();
+  renderRow("sandbox");
 }
 
 /* ---------------------------------------------------------------------
@@ -407,7 +312,7 @@ function saveLog(entries) {
 }
 
 function readoutFor(row) {
-  return state[row].map((c) => (c ? c.symbol : "_")).join(" - ");
+  return state[row].map((c) => c.symbol).join(" - ");
 }
 
 function renderLog() {
@@ -472,17 +377,17 @@ async function copyLogToClipboard() {
 function loadPreset(index) {
   const preset = PRESETS[index];
   if (!preset) return;
-  state.original = preset.sounds.map(([symbol, example]) => ({ symbol, example }));
+  state.original = preset.symbols.map(slotFromSymbol);
   document.getElementById("original-word-name").value = preset.word;
   copyDown();
+  renderRow("original");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  renderPiles();
+  renderPileIndex();
   renderPresets();
   renderAll();
   renderLog();
-  setupTrash();
 
   document.getElementById("original-word-name").value = PRESETS[0].word;
 
