@@ -11,14 +11,43 @@
 <header>
   <h1>Phonetic Rhyming Sandbox</h1>
   <p class="instructions">
-    Each slot below is a full sound-family card, just like the reference charts &mdash;
-    scan it top to bottom to see every alternative sound at that position. Click a row
-    to pick that sound, or use &lsaquo; &rsaquo; to flip the slot to a different family
-    entirely. Build a word, copy it down, then swap sounds in the sandbox row to find rhymes.
+    Deal a hand, drag cards down to spell a real word, lock it in, then swap sounds in the
+    sandbox row below to find rhymes.
   </p>
 </header>
 
 <main>
+  <section id="draft-section" class="row-block">
+    <div class="row-head">
+      <h2>Draw Your Hand</h2>
+      <button type="button" id="new-hand">&#127922; New hand</button>
+    </div>
+    <p class="instructions">
+      10 cards, 3&ndash;5 of them vowels. Drag a card down into the build row (or click it to
+      drop it in the next open slot), in the order you want it read. A real word is always
+      hiding in there somewhere &mdash; find it, type what you spelled, and lock it in.
+    </p>
+    <div class="hand-tray" id="hand-cards"></div>
+
+    <h3>Your Build</h3>
+    <div class="build-row" id="build-slots"></div>
+    <div class="row-foot">
+      <div class="row-controls">
+        <button type="button" id="add-build-slot">+ slot</button>
+        <button type="button" id="remove-build-slot">&minus; slot</button>
+        <button type="button" id="clear-build">Clear build</button>
+      </div>
+      <div class="phonetic-readout" id="readout-build"></div>
+    </div>
+    <div class="lock-row">
+      <label class="word-name">Word:
+        <input type="text" id="drafted-word-name" placeholder="what did you spell?">
+      </label>
+      <button type="button" id="lock-in">&#128274; Lock it in</button>
+    </div>
+    <p id="lock-message" class="lock-message" hidden></p>
+  </section>
+
   <section id="word-rows">
 
     <div class="row-block" id="original-block">

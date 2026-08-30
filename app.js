@@ -148,15 +148,250 @@ const PRESETS = [
 ];
 
 /* ---------------------------------------------------------------------
+ * Word bank for the hand randomizer — every entry uses only symbols
+ * that exist in PILES above, so a hand built from one of these is
+ * always solvable by construction (see generateHand()).
+ * ------------------------------------------------------------------- */
+const WORD_BANK = [
+  { word: "boat", symbols: ["b", "oh", "t"] },
+  { word: "coat", symbols: ["k", "oh", "t"] },
+  { word: "goat", symbols: ["g", "oh", "t"] },
+  { word: "moat", symbols: ["m", "oh", "t"] },
+  { word: "note", symbols: ["n", "oh", "t"] },
+  { word: "vote", symbols: ["v", "oh", "t"] },
+  { word: "rope", symbols: ["r", "oh", "p"] },
+  { word: "hope", symbols: ["h", "oh", "p"] },
+  { word: "cake", symbols: ["k", "ay", "k"] },
+  { word: "lake", symbols: ["l", "ay", "k"] },
+  { word: "rake", symbols: ["r", "ay", "k"] },
+  { word: "wake", symbols: ["w", "ay", "k"] },
+  { word: "bake", symbols: ["b", "ay", "k"] },
+  { word: "game", symbols: ["g", "ay", "m"] },
+  { word: "name", symbols: ["n", "ay", "m"] },
+  { word: "same", symbols: ["s", "ay", "m"] },
+  { word: "fame", symbols: ["f", "ay", "m"] },
+  { word: "time", symbols: ["t", "eye", "m"] },
+  { word: "dime", symbols: ["d", "eye", "m"] },
+  { word: "lime", symbols: ["l", "eye", "m"] },
+  { word: "bike", symbols: ["b", "eye", "k"] },
+  { word: "hike", symbols: ["h", "eye", "k"] },
+  { word: "like", symbols: ["l", "eye", "k"] },
+  { word: "pike", symbols: ["p", "eye", "k"] },
+  { word: "side", symbols: ["s", "eye", "d"] },
+  { word: "ride", symbols: ["r", "eye", "d"] },
+  { word: "hide", symbols: ["h", "eye", "d"] },
+  { word: "wide", symbols: ["w", "eye", "d"] },
+  { word: "tide", symbols: ["t", "eye", "d"] },
+  { word: "five", symbols: ["f", "eye", "v"] },
+  { word: "hive", symbols: ["h", "eye", "v"] },
+  { word: "dive", symbols: ["d", "eye", "v"] },
+  { word: "wave", symbols: ["w", "ay", "v"] },
+  { word: "cave", symbols: ["k", "ay", "v"] },
+  { word: "save", symbols: ["s", "ay", "v"] },
+  { word: "gave", symbols: ["g", "ay", "v"] },
+  { word: "sheep", symbols: ["sh", "ee", "p"] },
+  { word: "jeep", symbols: ["j", "ee", "p"] },
+  { word: "deep", symbols: ["d", "ee", "p"] },
+  { word: "keep", symbols: ["k", "ee", "p"] },
+  { word: "queen", symbols: ["qu", "ee", "n"] },
+  { word: "teen", symbols: ["t", "ee", "n"] },
+  { word: "seen", symbols: ["s", "ee", "n"] },
+  { word: "bean", symbols: ["b", "ee", "n"] },
+  { word: "lean", symbols: ["l", "ee", "n"] },
+  { word: "moon", symbols: ["m", "oo", "n"] },
+  { word: "soon", symbols: ["s", "oo", "n"] },
+  { word: "noon", symbols: ["n", "oo", "n"] },
+  { word: "june", symbols: ["j", "oo", "n"] },
+  { word: "tune", symbols: ["t", "yew", "n"] },
+  { word: "cute", symbols: ["k", "yew", "t"] },
+  { word: "mute", symbols: ["m", "yew", "t"] },
+  { word: "cube", symbols: ["k", "yew", "b"] },
+  { word: "purse", symbols: ["p", "ur", "s"] },
+  { word: "curse", symbols: ["k", "ur", "s"] },
+  { word: "nurse", symbols: ["n", "ur", "s"] },
+  { word: "verse", symbols: ["v", "ur", "s"] },
+  { word: "park", symbols: ["p", "ar", "k"] },
+  { word: "dark", symbols: ["d", "ar", "k"] },
+  { word: "bark", symbols: ["b", "ar", "k"] },
+  { word: "shark", symbols: ["sh", "ar", "k"] },
+  { word: "shout", symbols: ["sh", "ow", "t"] },
+  { word: "south", symbols: ["s", "ow", "th"] },
+  { word: "mouth", symbols: ["m", "ow", "th"] },
+  { word: "couch", symbols: ["k", "ow", "ch"] },
+  { word: "pouch", symbols: ["p", "ow", "ch"] },
+  { word: "paint", symbols: ["p", "ay", "n", "t"] },
+  { word: "faint", symbols: ["f", "ay", "n", "t"] },
+  { word: "count", symbols: ["k", "ow", "n", "t"] },
+  { word: "mount", symbols: ["m", "ow", "n", "t"] },
+  { word: "toe", symbols: ["t", "oh"] },
+  { word: "go", symbols: ["g", "oh"] },
+  { word: "no", symbols: ["n", "oh"] },
+  { word: "so", symbols: ["s", "oh"] },
+  { word: "may", symbols: ["m", "ay"] },
+  { word: "day", symbols: ["d", "ay"] },
+  { word: "way", symbols: ["w", "ay"] },
+  { word: "say", symbols: ["s", "ay"] },
+  { word: "pay", symbols: ["p", "ay"] },
+  { word: "new", symbols: ["n", "yew"] },
+  { word: "few", symbols: ["f", "yew"] },
+  { word: "high", symbols: ["h", "eye"] },
+  { word: "my", symbols: ["m", "eye"] },
+  { word: "boo", symbols: ["b", "oo"] },
+  { word: "shoe", symbols: ["sh", "oo"] },
+  { word: "pat", symbols: ["p", "a", "t"] },
+  { word: "cat", symbols: ["k", "a", "t"] },
+  { word: "hat", symbols: ["h", "a", "t"] },
+  { word: "mat", symbols: ["m", "a", "t"] },
+  { word: "sat", symbols: ["s", "a", "t"] },
+  { word: "van", symbols: ["v", "a", "n"] },
+  { word: "fan", symbols: ["f", "a", "n"] },
+  { word: "man", symbols: ["m", "a", "n"] },
+  { word: "pan", symbols: ["p", "a", "n"] },
+  { word: "ran", symbols: ["r", "a", "n"] },
+  { word: "pot", symbols: ["p", "ah", "t"] },
+  { word: "hot", symbols: ["h", "ah", "t"] },
+  { word: "dot", symbols: ["d", "ah", "t"] },
+  { word: "got", symbols: ["g", "ah", "t"] },
+  { word: "not", symbols: ["n", "ah", "t"] },
+  { word: "cup", symbols: ["k", "uh", "p"] },
+  { word: "pup", symbols: ["p", "uh", "p"] },
+  { word: "sun", symbols: ["s", "uh", "n"] },
+  { word: "run", symbols: ["r", "uh", "n"] },
+  { word: "fun", symbols: ["f", "uh", "n"] },
+  { word: "gun", symbols: ["g", "uh", "n"] },
+  { word: "pen", symbols: ["p", "eh", "n"] },
+  { word: "ten", symbols: ["t", "eh", "n"] },
+  { word: "hen", symbols: ["h", "eh", "n"] },
+  { word: "den", symbols: ["d", "eh", "n"] },
+  { word: "pin", symbols: ["p", "ih", "n"] },
+  { word: "win", symbols: ["w", "ih", "n"] },
+  { word: "fin", symbols: ["f", "ih", "n"] },
+  { word: "pig", symbols: ["p", "ih", "g"] },
+  { word: "big", symbols: ["b", "ih", "g"] },
+  { word: "wig", symbols: ["w", "ih", "g"] },
+  { word: "zap", symbols: ["z", "a", "p"] },
+  { word: "gang", symbols: ["g", "a", "ng"] },
+  { word: "bang", symbols: ["b", "a", "ng"] },
+  { word: "sang", symbols: ["s", "a", "ng"] },
+  { word: "rang", symbols: ["r", "a", "ng"] },
+  { word: "yarn", symbols: ["yh", "ar", "n"] },
+  { word: "yard", symbols: ["yh", "ar", "d"] },
+  { word: "this", symbols: ["TH", "ih", "s"] },
+  { word: "that", symbols: ["TH", "a", "t"] },
+  { word: "them", symbols: ["TH", "eh", "m"] },
+  { word: "then", symbols: ["TH", "eh", "n"] },
+  { word: "think", symbols: ["th", "ih", "ng"] },
+  { word: "thin", symbols: ["th", "ih", "n"] },
+  { word: "vet", symbols: ["v", "eh", "t"] },
+  { word: "job", symbols: ["j", "ah", "b"] },
+  { word: "jog", symbols: ["j", "ah", "g"] },
+  { word: "log", symbols: ["l", "ah", "g"] },
+  { word: "dog", symbols: ["d", "ah", "g"] },
+  { word: "fog", symbols: ["f", "ah", "g"] },
+  { word: "hog", symbols: ["h", "ah", "g"] },
+  { word: "leg", symbols: ["l", "eh", "g"] },
+  { word: "beg", symbols: ["b", "eh", "g"] },
+  { word: "keg", symbols: ["k", "eh", "g"] },
+  { word: "hall", symbols: ["h", "aw", "l"] },
+  { word: "ball", symbols: ["b", "aw", "l"] },
+  { word: "call", symbols: ["k", "aw", "l"] },
+  { word: "wall", symbols: ["w", "aw", "l"] },
+  { word: "tall", symbols: ["t", "aw", "l"] },
+  { word: "chair", symbols: ["ch", "air"] },
+  { word: "hair", symbols: ["h", "air"] },
+  { word: "pair", symbols: ["p", "air"] },
+];
+
+const ALL_VOWEL_CARDS = [];
+const ALL_CONSONANT_CARDS = [];
+PILES.forEach((pile) =>
+  pile.cards.forEach((c) => {
+    const entry = { pileId: pile.id, symbol: c.symbol, example: c.example };
+    (pile.type === "vowel" ? ALL_VOWEL_CARDS : ALL_CONSONANT_CARDS).push(entry);
+  })
+);
+
+/* ---------------------------------------------------------------------
  * State — every slot always holds a full { pileId, symbol, example }.
  * ------------------------------------------------------------------- */
 const state = {
   original: PRESETS[0].symbols.map(slotFromSymbol),
   sandbox: PRESETS[0].symbols.map(slotFromSymbol),
+  hand: [], // { pileId, symbol, example, uid, used }
+  build: [], // slot -> { pileId, symbol, example, uid } | null
+  secretTarget: null,
 };
 
 const MIN_SLOTS = 1;
 const MAX_SLOTS = 6;
+
+const HAND_SIZE = 10;
+const MIN_VOWELS = 3;
+const MAX_VOWELS = 5;
+const BUILD_MIN = 2;
+const BUILD_MAX = 6;
+
+let uidCounter = 0;
+function nextUid() {
+  uidCounter += 1;
+  return uidCounter;
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickRandom(arr) {
+  return arr[randInt(0, arr.length - 1)];
+}
+
+function shuffle(arr) {
+  const copy = arr.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = randInt(0, i);
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+/**
+ * Build a 10-card hand that is guaranteed solvable: the exact cards
+ * needed to spell a secretly-chosen word from WORD_BANK are always
+ * present (each as its own card instance, so a repeated sound like
+ * "cake"'s two k's gets two physical cards). The rest of the hand is
+ * random padding, constrained so the hand always has 3-5 vowel cards
+ * out of 10 total.
+ */
+function generateHand() {
+  const target = pickRandom(WORD_BANK);
+  const requiredCards = target.symbols.map((sym) => ({ ...slotFromSymbol(sym), uid: nextUid() }));
+  const requiredVowelCount = requiredCards.filter((c) => PILE_BY_ID[c.pileId].type === "vowel").length;
+  const requiredConsonantCount = requiredCards.length - requiredVowelCount;
+
+  let totalVowels;
+  do {
+    totalVowels = randInt(MIN_VOWELS, MAX_VOWELS);
+  } while (totalVowels < requiredVowelCount || HAND_SIZE - totalVowels < requiredConsonantCount);
+
+  const extraVowelsNeeded = totalVowels - requiredVowelCount;
+  const extraConsonantsNeeded = HAND_SIZE - totalVowels - requiredConsonantCount;
+
+  const extraVowelCards = Array.from({ length: extraVowelsNeeded }, () => ({
+    ...pickRandom(ALL_VOWEL_CARDS),
+    uid: nextUid(),
+  }));
+  const extraConsonantCards = Array.from({ length: extraConsonantsNeeded }, () => ({
+    ...pickRandom(ALL_CONSONANT_CARDS),
+    uid: nextUid(),
+  }));
+
+  const hand = shuffle([...requiredCards, ...extraVowelCards, ...extraConsonantCards]).map((c) => ({
+    ...c,
+    used: false,
+  }));
+
+  return { hand, target };
+}
 
 /* ---------------------------------------------------------------------
  * Rendering
@@ -197,7 +432,7 @@ function makeSlotCardEl(rowKey, index) {
   pile.cards.forEach((c) => {
     const rowEl = document.createElement("div");
     const isActive = c.symbol === slotState.symbol;
-    rowEl.className = `sound-row ${pile.cls}` + (isActive ? " active" : "");
+    rowEl.className = "sound-row" + (isActive ? ` active ${pile.cls}` : "");
     rowEl.addEventListener("click", () => selectSound(rowKey, index, c.symbol));
 
     const symbolEl = document.createElement("span");
@@ -295,6 +530,216 @@ function copyDown() {
 }
 
 /* ---------------------------------------------------------------------
+ * Hand randomizer: deal 10 cards, drag/click them into a build row to
+ * spell a word, then lock it in as the Original Word above.
+ * ------------------------------------------------------------------- */
+function makeMiniCardEl(cardData, { draggable }) {
+  const el = document.createElement("div");
+  el.className = `mini-card ${CARD_CLASS[cardData.symbol] || ""}`;
+  el.draggable = draggable;
+
+  const symbolEl = document.createElement("div");
+  symbolEl.className = "symbol";
+  symbolEl.textContent = cardData.symbol;
+  el.appendChild(symbolEl);
+
+  const exampleEl = document.createElement("div");
+  exampleEl.className = "example";
+  exampleEl.textContent = cardData.example;
+  el.appendChild(exampleEl);
+
+  el.title = `${cardData.symbol} — as in "${cardData.example}"`;
+  return el;
+}
+
+// Reuse the same category-class lookup the family cards use.
+const CARD_CLASS = {};
+PILES.forEach((pile) => pile.cards.forEach((c) => (CARD_CLASS[c.symbol] = pile.cls)));
+
+function renderHand() {
+  const tray = document.getElementById("hand-cards");
+  tray.innerHTML = "";
+  state.hand
+    .filter((c) => !c.used)
+    .forEach((cardData) => {
+      const el = makeMiniCardEl(cardData, { draggable: true });
+      el.classList.add("hand-card");
+      el.addEventListener("click", () => placeInFirstEmptySlot(cardData.uid));
+      el.addEventListener("dragstart", (e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", JSON.stringify({ source: "hand", uid: cardData.uid }));
+      });
+      tray.appendChild(el);
+    });
+}
+
+function renderBuildRow() {
+  const container = document.getElementById("build-slots");
+  container.innerHTML = "";
+
+  state.build.forEach((cardData, index) => {
+    const slot = document.createElement("div");
+    slot.className = "build-slot" + (cardData ? " filled" : "");
+    slot.dataset.index = String(index);
+
+    if (cardData) {
+      const cardEl = makeMiniCardEl(cardData, { draggable: true });
+      cardEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        returnSlotToHand(index);
+      });
+      cardEl.addEventListener("dragstart", (e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", JSON.stringify({ source: "build", index }));
+      });
+      slot.appendChild(cardEl);
+    } else {
+      slot.textContent = "+";
+    }
+
+    slot.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      slot.classList.add("drag-over");
+    });
+    slot.addEventListener("dragleave", () => slot.classList.remove("drag-over"));
+    slot.addEventListener("drop", (e) => {
+      e.preventDefault();
+      slot.classList.remove("drag-over");
+      let payload;
+      try {
+        payload = JSON.parse(e.dataTransfer.getData("text/plain"));
+      } catch (err) {
+        return;
+      }
+      if (!payload) return;
+      if (payload.source === "hand") placeCardInSlot(payload.uid, index);
+      else if (payload.source === "build" && payload.index !== index) swapBuildSlots(payload.index, index);
+    });
+
+    container.appendChild(slot);
+  });
+
+  document.getElementById("readout-build").textContent = state.build.length
+    ? state.build.map((c) => (c ? c.symbol : "_")).join(" - ")
+    : "(no slots)";
+
+  const lockBtn = document.getElementById("lock-in");
+  lockBtn.disabled = state.build.some((c) => !c);
+}
+
+function placeCardInSlot(uid, slotIndex) {
+  const handCard = state.hand.find((c) => c.uid === uid);
+  if (!handCard || handCard.used) return;
+
+  const occupant = state.build[slotIndex];
+  if (occupant) {
+    const occupantInHand = state.hand.find((c) => c.uid === occupant.uid);
+    if (occupantInHand) occupantInHand.used = false;
+  }
+
+  handCard.used = true;
+  state.build[slotIndex] = { pileId: handCard.pileId, symbol: handCard.symbol, example: handCard.example, uid: handCard.uid };
+  renderHand();
+  renderBuildRow();
+}
+
+function placeInFirstEmptySlot(uid) {
+  const emptyIndex = state.build.findIndex((c) => !c);
+  if (emptyIndex === -1) return;
+  placeCardInSlot(uid, emptyIndex);
+}
+
+function returnSlotToHand(slotIndex) {
+  const card = state.build[slotIndex];
+  if (!card) return;
+  const handCard = state.hand.find((c) => c.uid === card.uid);
+  if (handCard) handCard.used = false;
+  state.build[slotIndex] = null;
+  renderHand();
+  renderBuildRow();
+}
+
+function swapBuildSlots(i, j) {
+  const tmp = state.build[i];
+  state.build[i] = state.build[j];
+  state.build[j] = tmp;
+  renderBuildRow();
+}
+
+function setupHandReturnZone() {
+  const tray = document.getElementById("hand-cards");
+  tray.addEventListener("dragover", (e) => e.preventDefault());
+  tray.addEventListener("drop", (e) => {
+    e.preventDefault();
+    let payload;
+    try {
+      payload = JSON.parse(e.dataTransfer.getData("text/plain"));
+    } catch (err) {
+      return;
+    }
+    if (payload && payload.source === "build") returnSlotToHand(payload.index);
+  });
+}
+
+function addBuildSlot() {
+  if (state.build.length >= BUILD_MAX) return;
+  state.build.push(null);
+  renderBuildRow();
+}
+
+function removeBuildSlot() {
+  if (state.build.length <= BUILD_MIN) return;
+  const last = state.build.length - 1;
+  if (state.build[last]) returnSlotToHand(last);
+  state.build.pop();
+  renderBuildRow();
+}
+
+function clearBuild() {
+  state.build.forEach((_, i) => {
+    if (state.build[i]) returnSlotToHand(i);
+  });
+}
+
+function showLockMessage(text) {
+  const el = document.getElementById("lock-message");
+  el.textContent = text;
+  el.hidden = false;
+}
+
+function lockInWord() {
+  if (state.build.some((c) => !c)) return;
+  const nameInput = document.getElementById("drafted-word-name");
+  const wordName = nameInput.value.trim();
+  if (!wordName) {
+    showLockMessage("Type the word you spelled before locking it in.");
+    return;
+  }
+
+  state.original = state.build.map((c) => ({ pileId: c.pileId, symbol: c.symbol, example: c.example }));
+  document.getElementById("original-word-name").value = wordName;
+  copyDown();
+  renderRow("original");
+
+  showLockMessage(
+    `Locked in "${wordName}" (${state.build.map((c) => c.symbol).join(" - ")}) — now rift on it in the Rhyme Sandbox below.`
+  );
+
+  document.getElementById("original-block").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function newHand() {
+  const { hand, target } = generateHand();
+  state.hand = hand;
+  state.secretTarget = target;
+  state.build = Array(target.symbols.length).fill(null);
+  document.getElementById("drafted-word-name").value = "";
+  document.getElementById("lock-message").hidden = true;
+  renderHand();
+  renderBuildRow();
+}
+
+/* ---------------------------------------------------------------------
  * Rhyme log (saved to localStorage so it survives a page reload)
  * ------------------------------------------------------------------- */
 const LOG_KEY = "phonetic-rhyme-log";
@@ -388,8 +833,16 @@ document.addEventListener("DOMContentLoaded", () => {
   renderPresets();
   renderAll();
   renderLog();
+  setupHandReturnZone();
+  newHand();
 
   document.getElementById("original-word-name").value = PRESETS[0].word;
+
+  document.getElementById("new-hand").addEventListener("click", newHand);
+  document.getElementById("add-build-slot").addEventListener("click", addBuildSlot);
+  document.getElementById("remove-build-slot").addEventListener("click", removeBuildSlot);
+  document.getElementById("clear-build").addEventListener("click", clearBuild);
+  document.getElementById("lock-in").addEventListener("click", lockInWord);
 
   document.querySelectorAll(".add-slot").forEach((btn) =>
     btn.addEventListener("click", () => addSlot(btn.dataset.row))
