@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phonetic Rhyming Sandbox</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <h1>Phonetic Rhyming Sandbox</h1>
+  <p class="instructions">
+    Build a word out of sound cards, then copy it down into the sandbox row and swap cards
+    in and out to discover new, phonetically-similar words. Drag a card from a pile on the
+    right into a slot &mdash; or tap a slot to select it, then tap a pile card to fill it.
+  </p>
+</header>
+
+<main>
+  <section id="word-rows">
+
+    <div class="row-block" id="original-block">
+      <div class="row-head">
+        <h2>Original Word</h2>
+        <label class="word-name">Word:
+          <input type="text" id="original-word-name" placeholder="e.g. boat">
+        </label>
+        <select id="preset-select">
+          <option value="">Load example&hellip;</option>
+        </select>
+      </div>
+      <div class="slots" id="row-original"></div>
+      <div class="row-foot">
+        <div class="row-controls">
+          <button type="button" class="add-slot" data-row="original">+ sound</button>
+          <button type="button" class="remove-slot" data-row="original">&minus; sound</button>
+          <button type="button" class="clear-row" data-row="original">Clear row</button>
+        </div>
+        <div class="phonetic-readout" id="readout-original"></div>
+      </div>
+    </div>
+
+    <div class="row-arrow">
+      <button type="button" id="copy-down">&#8595; Copy down to Sandbox</button>
+    </div>
+
+    <div class="row-block" id="sandbox-block">
+      <div class="row-head">
+        <h2>Rhyme Sandbox</h2>
+        <label class="word-name">Your word:
+          <input type="text" id="sandbox-word-name" placeholder="what does this spell?">
+        </label>
+      </div>
+      <div class="slots" id="row-sandbox"></div>
+      <div class="row-foot">
+        <div class="row-controls">
+          <button type="button" class="add-slot" data-row="sandbox">+ sound</button>
+          <button type="button" class="remove-slot" data-row="sandbox">&minus; sound</button>
+          <button type="button" class="clear-row" data-row="sandbox">Clear row</button>
+        </div>
+        <div class="phonetic-readout" id="readout-sandbox"></div>
+      </div>
+      <button type="button" id="save-pair">Save this rhyme</button>
+    </div>
+  </section>
+
+  <section id="log-section">
+    <div class="log-head">
+      <h2>Discovered Rhymes</h2>
+      <div class="log-controls">
+        <button type="button" id="copy-log">Copy list</button>
+        <button type="button" id="clear-log">Clear list</button>
+      </div>
+    </div>
+    <p id="log-empty" class="log-empty">Nothing saved yet &mdash; build a rhyme above and click &ldquo;Save this rhyme&rdquo;.</p>
+    <ul id="rhyme-log"></ul>
+  </section>
+</main>
+
+<aside id="piles">
+  <h2>Sound Piles</h2>
+  <div id="trash" class="trash-zone">&#128465; Drop a sandbox card here to remove it</div>
+  <div id="pile-list"></div>
+
+  <div class="legend">
+    <h3>Legend</h3>
+    <div class="legend-row"><span class="swatch cat-plosive-voiced"></span> Plosive &ndash; voiced</div>
+    <div class="legend-row"><span class="swatch cat-plosive-airy"></span> Plosive &ndash; airy</div>
+    <div class="legend-row"><span class="swatch cat-fricative-voiced"></span> Fricative &ndash; voiced</div>
+    <div class="legend-row"><span class="swatch cat-fricative-airy"></span> Fricative &ndash; airy</div>
+    <div class="legend-row"><span class="swatch cat-nasal-voiced"></span> Nasal &ndash; voiced</div>
+    <div class="legend-row"><span class="swatch cat-vowel-open"></span> Vowel &ndash; open</div>
+    <div class="legend-row"><span class="swatch cat-vowel-medium"></span> Vowel &ndash; medium</div>
+    <div class="legend-row"><span class="swatch cat-vowel-small"></span> Vowel &ndash; small</div>
+  </div>
+</aside>
+
+<script src="app.js"></script>
+</body>
+</html>
