@@ -491,7 +491,45 @@ function makeSlotCardEl(rowKey, index) {
   nextBtn.addEventListener("click", () => cyclePile(rowKey, index, 1));
   head.appendChild(nextBtn);
 
+  // The header is the drag handle for reordering this slot within its
+  // row — hold and drag it left/right to drop it in a new position.
+  // Guard dragstart so a click on the </> buttons themselves never
+  // gets hijacked into a drag.
+  head.draggable = true;
+  head.title = "Drag to reorder this sound in the word";
+  head.addEventListener("dragstart", (e) => {
+    if (e.target.closest("button")) {
+      e.preventDefault();
+      return;
+    }
+    reorderDrag = { row: rowKey, index };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", JSON.stringify({ type: "reorder-slot", row: rowKey, index }));
+  });
+  head.addEventListener("dragend", () => {
+    reorderDrag = null;
+    clearDropIndicators();
+  });
+
   card.appendChild(head);
+
+  card.addEventListener("dragover", (e) => {
+    if (!reorderDrag || reorderDrag.row !== rowKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    clearDropIndicators();
+    card.classList.add("drop-target");
+  });
+  card.addEventListener("dragleave", () => card.classList.remove("drop-target"));
+  card.addEventListener("drop", (e) => {
+    if (!reorderDrag || reorderDrag.row !== rowKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    clearDropIndicators();
+    moveSlot(rowKey, reorderDrag.index, index);
+    reorderDrag = null;
+  });
 
   const rows = document.createElement("div");
   rows.className = "slot-card-rows";
@@ -567,6 +605,48 @@ function cyclePile(row, index, direction) {
   const nextPile = PILES[nextPos];
   state[row][index] = { pileId: nextPile.id, symbol: nextPile.cards[0].symbol, example: nextPile.cards[0].example };
   renderRow(row);
+}
+
+/* ---------------------------------------------------------------------
+ * Drag-to-reorder for slot cards within a row — hold the card's header
+ * and drop it on another card (inserts before it) or on empty space
+ * past the last card (moves it to the end of the row).
+ * ------------------------------------------------------------------- */
+let reorderDrag = null; // { row, index } of the slot currently being dragged
+
+function clearDropIndicators() {
+  document.querySelectorAll(".slot-card.drop-target").forEach((el) => el.classList.remove("drop-target"));
+}
+
+// Moves the slot at fromIndex so it lands immediately before whatever is
+// currently at targetIndex (targetIndex === row.length moves it to the
+// very end). Dropping a card on itself is a no-op.
+function moveSlot(row, fromIndex, targetIndex) {
+  if (fromIndex === targetIndex || fromIndex + 1 === targetIndex) return;
+  const arr = state[row];
+  let insertAt = targetIndex;
+  if (fromIndex < insertAt) insertAt -= 1;
+  const [item] = arr.splice(fromIndex, 1);
+  arr.splice(insertAt, 0, item);
+  renderRow(row);
+}
+
+function setupRowReorderZones() {
+  ["original", "sandbox"].forEach((rowKey) => {
+    const container = document.getElementById(`row-${rowKey}`);
+    container.addEventListener("dragover", (e) => {
+      if (!reorderDrag || reorderDrag.row !== rowKey) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    });
+    container.addEventListener("drop", (e) => {
+      if (!reorderDrag || reorderDrag.row !== rowKey) return;
+      e.preventDefault();
+      clearDropIndicators();
+      moveSlot(rowKey, reorderDrag.index, state[rowKey].length);
+      reorderDrag = null;
+    });
+  });
 }
 
 function addSlot(row) {
@@ -894,6 +974,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAll();
   renderLog();
   setupHandReturnZone();
+  setupRowReorderZones();
   newHand();
 
   document.getElementById("original-word-name").value = PRESETS[0].word;
