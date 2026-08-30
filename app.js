@@ -468,6 +468,9 @@ function makeSlotCardEl(rowKey, index) {
 
   const card = document.createElement("div");
   card.className = "slot-card";
+  if (reorderSelect && reorderSelect.row === rowKey && reorderSelect.index === index) {
+    card.classList.add("reorder-selected");
+  }
 
   const head = document.createElement("div");
   head.className = "slot-card-head";
@@ -494,9 +497,12 @@ function makeSlotCardEl(rowKey, index) {
   // The header is the drag handle for reordering this slot within its
   // row — hold and drag it left/right to drop it in a new position.
   // Guard dragstart so a click on the </> buttons themselves never
-  // gets hijacked into a drag.
+  // gets hijacked into a drag. Native drag doesn't fire from a touch
+  // gesture on phones, so the header is also tap-to-select: tap once to
+  // pick it up, tap another card in the row to drop it there — the same
+  // moveSlot() the drag path uses.
   head.draggable = true;
-  head.title = "Drag to reorder this sound in the word";
+  head.title = "Drag to reorder — or tap, then tap another sound, to swap it in";
   head.addEventListener("dragstart", (e) => {
     if (e.target.closest("button")) {
       e.preventDefault();
@@ -509,6 +515,10 @@ function makeSlotCardEl(rowKey, index) {
   head.addEventListener("dragend", () => {
     reorderDrag = null;
     clearDropIndicators();
+  });
+  head.addEventListener("click", (e) => {
+    if (e.target.closest("button")) return;
+    handleHeaderTap(rowKey, index);
   });
 
   card.appendChild(head);
@@ -613,6 +623,7 @@ function cyclePile(row, index, direction) {
  * past the last card (moves it to the end of the row).
  * ------------------------------------------------------------------- */
 let reorderDrag = null; // { row, index } of the slot currently being dragged
+let reorderSelect = null; // { row, index } of the slot tap-selected for reordering (touch path)
 
 function clearDropIndicators() {
   document.querySelectorAll(".slot-card.drop-target").forEach((el) => el.classList.remove("drop-target"));
@@ -629,6 +640,22 @@ function moveSlot(row, fromIndex, targetIndex) {
   const [item] = arr.splice(fromIndex, 1);
   arr.splice(insertAt, 0, item);
   renderRow(row);
+}
+
+// Touch-friendly alternative to dragging a header: tap a card's header to
+// select it, then tap another card's header in the same row to drop the
+// selected one in immediately before it (tapping the same header again,
+// or a card in a different row, just changes/clears the selection).
+function handleHeaderTap(rowKey, index) {
+  if (reorderSelect && reorderSelect.row === rowKey) {
+    const fromIndex = reorderSelect.index;
+    reorderSelect = null;
+    if (fromIndex !== index) moveSlot(rowKey, fromIndex, index);
+    renderRow(rowKey); // guarantees the selected highlight clears even on a no-op move
+    return;
+  }
+  reorderSelect = { row: rowKey, index };
+  renderRow(rowKey);
 }
 
 function setupRowReorderZones() {
@@ -649,24 +676,38 @@ function setupRowReorderZones() {
   });
 }
 
+// A structural change to a row (length changes, a full reset, or the
+// whole array being replaced) can leave a stale drag/tap-select pointing
+// at an index that no longer means the same thing — clear both so the
+// next interaction starts fresh.
+function clearReorderState() {
+  reorderDrag = null;
+  reorderSelect = null;
+  clearDropIndicators();
+}
+
 function addSlot(row) {
   if (state[row].length >= MAX_SLOTS) return;
+  clearReorderState();
   state[row].push(defaultSlot());
   renderRow(row);
 }
 
 function removeSlot(row) {
   if (state[row].length <= MIN_SLOTS) return;
+  clearReorderState();
   state[row].pop();
   renderRow(row);
 }
 
 function clearRow(row) {
+  clearReorderState();
   state[row] = state[row].map(defaultSlot);
   renderRow(row);
 }
 
 function copyDown() {
+  clearReorderState();
   state.sandbox = state.original.map((c) => ({ ...c }));
   document.getElementById("sandbox-word-name").value = "";
   renderRow("sandbox");
@@ -896,7 +937,12 @@ function loadLog() {
 }
 
 function saveLog(entries) {
-  localStorage.setItem(LOG_KEY, JSON.stringify(entries));
+  try {
+    localStorage.setItem(LOG_KEY, JSON.stringify(entries));
+  } catch (err) {
+    // Storage unavailable (private browsing, quota, etc.) — the log just
+    // won't persist across a reload; nothing else in the page depends on it.
+  }
 }
 
 function renderLog() {
