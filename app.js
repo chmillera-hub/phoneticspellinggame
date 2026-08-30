@@ -143,16 +143,46 @@ const PILE_CODE = {};
   });
 })();
 
-// Formats a row of cards as "b(c1) -oh(v3) -t(c4)" — no leading dash on the
-// first sound, every sound after it prefixed with "-" and tagged with its
-// source pile code. Empty build slots render as a bare "_".
-function formatReadout(cards) {
-  return cards
-    .map((c, i) => {
-      const token = c ? `${c.symbol}(${PILE_CODE[c.pileId]})` : "_";
-      return i === 0 ? token : `-${token}`;
-    })
-    .join(" ");
+// Joins a token list the way the reference cards read: "b -oh -t" — no
+// leading dash on the first sound, every sound after it prefixed with "-".
+function joinTokens(tokens) {
+  return tokens.map((t, i) => (i === 0 ? t : `-${t}`)).join(" ");
+}
+
+// Plain readout, no source labels — used wherever there's no counterpart
+// word to compare against (e.g. the hand-drafting build row).
+function formatPlain(cards) {
+  return joinTokens(cards.map((c) => (c ? c.symbol : "_")));
+}
+
+// Diff-aware readout for a pair of words: a sound is tagged with its
+// source pile code, e.g. "p(c4)", only where it and its counterpart at
+// the same position (in the other word) come from different pile
+// families. Where the families match, or there's no counterpart at all
+// (the words are different lengths), the sound renders plain. This keeps
+// two closely-related words readable while still surfacing exactly which
+// sound family shifted — e.g. "plague" -> "drab" reads
+// "p(c4) -l -ay -g" -> "d(c1) -r -a -b", flagging only the c4->c1 swap.
+function formatCompared(cardsA, cardsB) {
+  const len = Math.max(cardsA.length, cardsB.length);
+  const tokensA = [];
+  const tokensB = [];
+  for (let i = 0; i < len; i++) {
+    const a = cardsA[i];
+    const b = cardsB[i];
+    const sameFamily = a && b && a.pileId === b.pileId;
+    if (a) tokensA.push(sameFamily ? a.symbol : `${a.symbol}(${PILE_CODE[a.pileId]})`);
+    if (b) tokensB.push(sameFamily ? b.symbol : `${b.symbol}(${PILE_CODE[b.pileId]})`);
+  }
+  return { a: joinTokens(tokensA), b: joinTokens(tokensB) };
+}
+
+// Keeps the Original Word and Rhyme Sandbox readouts diffed against each
+// other live, so editing one immediately shows which sounds still match.
+function renderReadouts() {
+  const { a, b } = formatCompared(state.original, state.sandbox);
+  document.getElementById("readout-original").textContent = a || "(no sounds yet)";
+  document.getElementById("readout-sandbox").textContent = b || "(no sounds yet)";
 }
 
 // Look up which pile a symbol belongs to, so presets can be defined by
@@ -488,10 +518,7 @@ function renderRow(rowKey) {
   const container = document.getElementById(`row-${rowKey}`);
   container.innerHTML = "";
   state[rowKey].forEach((_, index) => container.appendChild(makeSlotCardEl(rowKey, index)));
-
-  document.getElementById(`readout-${rowKey}`).textContent = state[rowKey].length
-    ? formatReadout(state[rowKey])
-    : "(no sounds yet)";
+  renderReadouts();
 }
 
 function renderPileIndex() {
@@ -651,7 +678,7 @@ function renderBuildRow() {
   });
 
   document.getElementById("readout-build").textContent = state.build.length
-    ? formatReadout(state.build)
+    ? formatPlain(state.build)
     : "(no slots)";
 
   const lockBtn = document.getElementById("lock-in");
@@ -753,7 +780,7 @@ function lockInWord() {
   renderRow("original");
 
   showLockMessage(
-    `Locked in "${wordName}" (${formatReadout(state.build)}) — now rift on it in the Rhyme Sandbox below.`
+    `Locked in "${wordName}" (${formatPlain(state.build)}) — now rift on it in the Rhyme Sandbox below.`
   );
 
   document.getElementById("original-block").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -787,10 +814,6 @@ function saveLog(entries) {
   localStorage.setItem(LOG_KEY, JSON.stringify(entries));
 }
 
-function readoutFor(row) {
-  return formatReadout(state[row]);
-}
-
 function renderLog() {
   const entries = loadLog();
   const list = document.getElementById("rhyme-log");
@@ -821,11 +844,12 @@ function renderLog() {
 
 function savePair() {
   const entries = loadLog();
+  const { a: originalSounds, b: newSounds } = formatCompared(state.original, state.sandbox);
   entries.push({
     originalWord: document.getElementById("original-word-name").value.trim(),
-    originalSounds: readoutFor("original"),
+    originalSounds,
     newWord: document.getElementById("sandbox-word-name").value.trim(),
-    newSounds: readoutFor("sandbox"),
+    newSounds,
   });
   saveLog(entries);
   renderLog();
