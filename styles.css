@@ -267,7 +267,13 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
 
 .slot-card {
   flex: 0 0 auto;
-  width: 176px;
+  /* Sized so exactly 3 cards always fill one row's width without
+     scrolling — the most common word length — while a 4th+ card still
+     overflows into the row's own horizontal scroll. 100% here resolves
+     against .slots' actual content width, so this adapts to any screen
+     rather than assuming one phone's viewport; it caps at 176px so
+     desktop, where 3 already fit easily, keeps its current card size. */
+  width: clamp(92px, calc((100% - 1.5rem) / 3), 176px);
   border: 2px solid #333;
   border-radius: 8px;
   background: #fff;
@@ -310,9 +316,9 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
   border: none;
   background: transparent;
   color: #fff;
-  font-size: 1.1rem;
-  width: 1.9rem;
-  height: 1.9rem;
+  font-size: 1.05rem;
+  width: 1.6rem;
+  height: 1.6rem;
   border-radius: 4px;
   cursor: pointer;
   line-height: 1;

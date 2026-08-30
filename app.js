@@ -484,7 +484,10 @@ function makeSlotCardEl(rowKey, index) {
 
   const label = document.createElement("span");
   label.className = "pile-label";
-  label.textContent = `${pile.label} — ${pile.category}`;
+  // Short form ("c1 · Plosive – voiced") instead of the full "Consonants 1
+  // — Plosive – voiced" — ties into the same pile codes the readouts use,
+  // and leaves the header room to stay legible on a narrow phone screen.
+  label.textContent = `${PILE_CODE[pile.id]} · ${pile.category}`;
   head.appendChild(label);
 
   const nextBtn = document.createElement("button");
