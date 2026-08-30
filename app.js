@@ -156,25 +156,30 @@ function formatPlain(cards) {
 }
 
 // Diff-aware readout for a pair of words: a sound is tagged with its
-// source pile code, e.g. "p(c4)", only where it and its counterpart at
-// the same position (in the other word) come from different pile
-// families. Where the families match, or there's no counterpart at all
-// (the words are different lengths), the sound renders plain. This keeps
-// two closely-related words readable while still surfacing exactly which
-// sound family shifted — e.g. "plague" -> "drab" reads
-// "p(c4) -l -ay -g" -> "d(c1) -r -a -b", flagging only the c4->c1 swap.
+// source pile code, e.g. "r(c2)", only when that pile family doesn't
+// appear ANYWHERE in the other word — regardless of position or word
+// length. If a family shows up somewhere in both words, every sound from
+// it renders plain on both sides, even if it landed at a different index.
+// This avoids the cascade you get from comparing position-by-position,
+// where one word being longer/shorter shifts everything after it out of
+// alignment and mislabels sounds that never actually changed family.
+// e.g. "burp" (b -ur -p) -> "wart" (w -oh -r(c2) -t): only "r" is new,
+// since c1, v3 and c4 are each present somewhere in "burp" too.
 function formatCompared(cardsA, cardsB) {
-  const len = Math.max(cardsA.length, cardsB.length);
-  const tokensA = [];
-  const tokensB = [];
-  for (let i = 0; i < len; i++) {
-    const a = cardsA[i];
-    const b = cardsB[i];
-    const sameFamily = a && b && a.pileId === b.pileId;
-    if (a) tokensA.push(sameFamily ? a.symbol : `${a.symbol}(${PILE_CODE[a.pileId]})`);
-    if (b) tokensB.push(sameFamily ? b.symbol : `${b.symbol}(${PILE_CODE[b.pileId]})`);
-  }
-  return { a: joinTokens(tokensA), b: joinTokens(tokensB) };
+  const familiesIn = (cards) => new Set(cards.filter(Boolean).map((c) => c.pileId));
+  const familiesA = familiesIn(cardsA);
+  const familiesB = familiesIn(cardsB);
+
+  const tag = (cards, otherFamilies) =>
+    cards.map((c) => {
+      if (!c) return "_";
+      return otherFamilies.has(c.pileId) ? c.symbol : `${c.symbol}(${PILE_CODE[c.pileId]})`;
+    });
+
+  return {
+    a: joinTokens(tag(cardsA, familiesB)),
+    b: joinTokens(tag(cardsB, familiesA)),
+  };
 }
 
 // Keeps the Original Word and Rhyme Sandbox readouts diffed against each
